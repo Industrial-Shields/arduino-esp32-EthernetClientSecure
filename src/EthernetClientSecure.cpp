@@ -544,8 +544,6 @@ void stop_ssl_socket(sslclient_context *ssl_client, const char *rootCABuff, cons
     mbedtls_ssl_config_free(&ssl_client->ssl_conf);
     mbedtls_ctr_drbg_free(&ssl_client->drbg_ctx);
     mbedtls_entropy_free(&ssl_client->entropy_ctx);
-
-	ssl_client->client = NULL;
 }
 
 
