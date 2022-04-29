@@ -9,6 +9,8 @@
 
 EthernetClientSecure::EthernetClientSecure()
 {
+	_connected = false;
+
     sslclient = new sslclient_context;
     ssl_init(sslclient);
     sslclient->client = this;
@@ -23,12 +25,17 @@ EthernetClientSecure::EthernetClientSecure()
 
 EthernetClientSecure::EthernetClientSecure(int sock) : EthernetClient(sock)
 {
+	_connected = false;
     _timeout = 0;
 
     sslclient = new sslclient_context;
     ssl_init(sslclient);
     sslclient->client = this;
     sslclient->handshake_timeout = 120000;
+
+	if ((sock >= 0) && (sock < MAX_SOCK_NUM)) {
+		_connected = true;
+	}
 
     _CA_cert = NULL;
     _cert = NULL;
@@ -45,7 +52,8 @@ EthernetClientSecure::~EthernetClientSecure()
 
 void EthernetClientSecure::stop()
 {
-    if (getSocketNumber() >= 0) {
+    if ((getSocketNumber() >= 0) && (getSocketNumber() < MAX_SOCK_NUM)) {
+		_connected = false;
         _peek = -1;
     }
     stop_ssl_socket(sslclient, _CA_cert, _cert, _private_key);
@@ -92,6 +100,7 @@ int EthernetClientSecure::connect(const char *host, uint16_t port, const char *C
         stop();
         return 0;
     }
+	_connected = true;
     return 1;
 }
 
@@ -111,6 +120,7 @@ int EthernetClientSecure::connect(const char *host, uint16_t port, const char *p
         stop();
         return 0;
     }
+	_connected = true;
     return 1;
 }
 
@@ -144,6 +154,9 @@ int EthernetClientSecure::read()
 
 size_t EthernetClientSecure::write(const uint8_t *buf, size_t size)
 {
+	if (!_connected) {
+		return 0;
+	}
     int res = send_ssl_data(sslclient, buf, size);
     if (res < 0) {
         stop();
@@ -195,12 +208,21 @@ int EthernetClientSecure::read_(uint8_t* buf, size_t size) {
 int EthernetClientSecure::available()
 {
     int peeked = (_peek >= 0);
+	if (!_connected) {
+		return peeked;
+	}
     int res = data_to_read(sslclient);
     if (res < 0) {
         stop();
         return peeked?peeked:res;
     }
     return res+peeked;
+}
+
+uint8_t EthernetClientSecure::connected() {
+	uint8_t dummy = 0;
+	read(&dummy, 0);
+	return _connected;
 }
 
 void EthernetClientSecure::setInsecure()
@@ -372,8 +394,7 @@ int start_ssl_client(sslclient_context *ssl_client, const char *host, uint32_t p
 
     log_v("Starting connection");
 	
-	ssl_client->client->connect_(remote_addr, port);
-	if (!ssl_client->client->connected()) {
+	if (!ssl_client->client->connect_(remote_addr, port)) {
 		return -1;
 	}
 

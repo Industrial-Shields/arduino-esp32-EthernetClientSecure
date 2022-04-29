@@ -72,6 +72,7 @@ public:
     size_t write(const uint8_t *buf, size_t size);
     int write_(const uint8_t *buf, size_t size);
     int available();
+	uint8_t connected();
     int read();
     int read(uint8_t *buf, size_t size);
     int read_(uint8_t *buf, size_t size);
@@ -111,6 +112,7 @@ public:
     };
 
 private:
+	bool _connected;
     char *_streamLoad(Stream& stream, size_t size);
 
     //friend class WiFiServer;
